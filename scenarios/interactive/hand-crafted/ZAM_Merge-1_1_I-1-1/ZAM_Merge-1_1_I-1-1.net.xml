@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on Fri Dec 18 15:45:04 2020 by Eclipse SUMO netconvert Version 1.8.0
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/netconvertConfiguration.xsd">
+
+    <input>
+        <node-files value="./converted_scenarios/hand-crafted/ZAM_Merge-1_1_I-1-1/nodes.net.xml"/>
+        <edge-files value="./converted_scenarios/hand-crafted/ZAM_Merge-1_1_I-1-1/edges.net.xml"/>
+        <connection-files value="./converted_scenarios/hand-crafted/ZAM_Merge-1_1_I-1-1/_connections.net.xml"/>
+        <tllogic-files value="./converted_scenarios/hand-crafted/ZAM_Merge-1_1_I-1-1/_tll.net.xml"/>
+    </input>
+
+    <output>
+        <output-file value="./converted_scenarios/hand-crafted/ZAM_Merge-1_1_I-1-1/ZAM_Merge-1_1_I-1-1.net.xml"/>
+    </output>
+
+    <processing>
+        <plain.extend-edge-shape value="true"/>
+        <geometry.remove.keep-edges.explicit value="true"/>
+        <geometry.avoid-overlap value="true"/>
+        <offset.disable-normalization value="true"/>
+    </processing>
+
+    <junctions>
+        <no-turnarounds value="true"/>
+        <junctions.internal-link-detail value="20"/>
+    </junctions>
+
+    <report>
+        <aggregate-warnings value="5"/>
+    </report>
+
+    <random_number>
+        <seed value="1234"/>
+    </random_number>
+
+</configuration>
+-->
+
+<net version="1.6" junctionCornerDetail="5" junctionLinkDetail="20" limitTurnSpeed="5.50" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/net_file.xsd">
+
+    <location netOffset="0.00,0.00" convBoundary="-94.20,-31.86,192.68,33.52" origBoundary="-94.20,-31.86,192.68,33.52" projParameter="!"/>
+
+    <edge id=":2_0" function="internal">
+        <lane id=":2_0_0" index="0" disallow="rail_fast" speed="36.11" length="17.75" width="4.06" shape="14.90,-29.20 32.64,-28.62"/>
+    </edge>
+    <edge id=":2_1" function="internal">
+        <lane id=":2_1_0" index="0" disallow="bus rail_fast" speed="13.62" length="18.32" width="4.06" shape="15.80,-22.90 16.45,-23.53 17.12,-24.11 17.83,-24.66 18.55,-25.18 19.31,-25.66 20.09,-26.10 20.90,-26.51 21.73,-26.88 22.59,-27.22 23.48,-27.52 24.39,-27.78 25.33,-28.01 26.29,-28.21 27.29,-28.37 28.30,-28.49 29.35,-28.57 30.42,-28.63 31.52,-28.64 32.64,-28.62"/>
+    </edge>
+
+    <edge id="708" from="1" to="2" priority="1" spreadType="center" length="123.67">
+        <lane id="708_0" index="0" disallow="rail_fast" speed="36.11" length="123.67" width="4.19" customShape="1" shape="-94.20,-31.86 -70.45,-31.03 -52.62,-30.64 -32.11,-30.16 -11.21,-29.86 4.70,-29.54 14.90,-29.20"/>
+    </edge>
+    <edge id="718" from="3" to="2" priority="1" spreadType="center" length="78.04">
+        <lane id="718_0" index="0" disallow="bus rail_fast" speed="36.11" length="78.04" width="4.17" customShape="1" shape="-8.62,33.52 -7.65,26.11 -5.55,15.33 -3.20,7.23 1.53,-3.18 8.58,-13.69 14.82,-21.92 15.80,-22.90"/>
+    </edge>
+    <edge id="723" from="2" to="4" priority="1" spreadType="center" length="163.34">
+        <lane id="723_0" index="0" disallow="rail_fast" speed="36.11" length="163.34" width="4.06" customShape="1" shape="32.64,-28.62 36.69,-28.48 57.69,-27.66 88.05,-26.85 120.32,-25.80 163.26,-24.49 192.68,-23.51"/>
+    </edge>
+
+    <junction id="1" type="dead_end" x="-94.20" y="-31.86" incLanes="" intLanes="" shape="-94.28,-29.76 -94.13,-33.95"/>
+    <junction id="2" type="priority" x="29.42" y="-28.73" incLanes="708_0 718_0" intLanes=":2_0_0 :2_1_0" shape="32.58,-26.59 32.71,-30.65 14.97,-31.30 14.83,-27.11 15.85,-26.90 16.05,-26.67 16.05,-26.35 15.84,-25.96 15.43,-25.48 16.18,-20.27 18.05,-22.30 20.26,-23.95 22.82,-25.20 25.73,-26.06 28.98,-26.52">
+        <request index="0" response="00" foes="10" cont="0"/>
+        <request index="1" response="01" foes="01" cont="0"/>
+    </junction>
+    <junction id="3" type="dead_end" x="-8.62" y="33.52" incLanes="" intLanes="" shape="-6.55,33.79 -10.68,33.25"/>
+    <junction id="4" type="dead_end" x="192.68" y="-23.51" incLanes="723_0" intLanes="" shape="192.75,-25.54 192.61,-21.48"/>
+
+    <connection from="708" to="723" fromLane="0" toLane="0" contPos="-4.00" via=":2_0_0" dir="s" state="M"/>
+    <connection from="718" to="723" fromLane="0" toLane="0" contPos="-4.00" via=":2_1_0" dir="l" state="m"/>
+
+    <connection from=":2_0" to="723" fromLane="0" toLane="0" dir="s" state="M"/>
+    <connection from=":2_1" to="723" fromLane="0" toLane="0" dir="l" state="M"/>
+
+</net>
