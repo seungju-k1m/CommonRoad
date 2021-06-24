@@ -179,8 +179,14 @@ class Simulator:
         return ego_info, info
 
     def run(self):
+        # Keys of Info : 'position', "orientation", "velocity"
+        DT = 0.1
+        A = 3.0
         self.env = self.init()
 
-        ego_info, info = self.get_state()
         for _ in range(100):
+            ego_info, info = self.get_state()
+            pos = ego_info['position']
+            ori = ego_info['orientation']
+            velo = ego_info['velocity']
             self.step()
