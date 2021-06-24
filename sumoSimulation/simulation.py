@@ -101,7 +101,6 @@ class Simulator:
         """
         sumo_sim = SumoSimulation()
         problems = []
-        # goalState = self.problem.planning_problem_dict[125].goal.state_list[0]
         _goalState = State(
             position=Rectangle(1, 1),
             orientation=AngleInterval(-1, 1),
@@ -120,21 +119,14 @@ class Simulator:
                 PlanningProblem(i+1, initState, GoalRegion([_goalState]))
             )
         problemSet = PlanningProblemSet(problems)
-        sumo_sim.initialize(self.conf, self.scenario_wrapper, problemSet)
+        if self.egoMode:
+            sumo_sim.initialize(self.conf, self.scenario_wrapper, problemSet)
+            ids = sumo_sim.ids_cr2sumo['egoVehicle'].values()
+            for id in ids:
+                sumo_sim.vehicledomain.setColor(id, (255, 0, 0))
+        else:
+            sumo_sim.initialize(self.conf, self.scenario_wrapper, None)
 
-        ids = sumo_sim.ids_cr2sumo['egoVehicle'].values()
-        for id in ids:
-            sumo_sim.vehicledomain.setColor(id, (255, 0, 0))
-        # sumo_sim.initialize(self.conf, self.scenario_wrapper, self.problem)
-        # ego_vehicles = sumo_sim.ego_vehicles
-        # for step in range(self._cfg.step):
-        #     scenario = sumo_sim.commonroad_scenario_at_time_step(
-        #         sumo_sim.current_time_step)
-        #     info = self.wrap_scenario(scenario)
-        #     ego_info = self.wrap_scenario(ego_vehicles)
-
-        #     sumo_sim.simulate_step()
-        #     time.sleep(0.01)
         roadNetworks = sumo_sim.commonroad_scenario_at_time_step(
             sumo_sim.current_time_step).lanelet_network
         lanelets = roadNetworks.lanelets
@@ -204,9 +196,12 @@ class Simulator:
         scenario = self.env.commonroad_scenario_at_time_step(
             self.env.current_time_step
         )
-        egoVehicles = self.env.ego_vehicles
+        if self.egoMode:
+            egoVehicles = self.env.ego_vehicles
+            ego_info = self.wrap_scenario(egoVehicles)
+        else:
+            ego_info = {}
         info = self.wrap_scenario(scenario)
-        ego_info = self.wrap_scenario(egoVehicles)
 
         return ego_info, info
 
@@ -214,12 +209,15 @@ class Simulator:
         # Keys of Info : 'position', "orientation", "velocity"
         DT = 0.1
         A = 3.0
+        self.egoMode = True
         self.env, self.map_info = self.init()
 
         for _ in range(100):
             ego_info, info = self.get_state()
-            pos = ego_info['position']
-            map_info = self.load_current_occupied_lane_info(pos[0])
-            ori = ego_info['orientation']
-            velo = ego_info['velocity']
+            if self.egoMode:
+                pos = ego_info['position']
+                ori = ego_info['orientation']
+                velo = ego_info['velocity']
+                map_info = self.load_current_occupied_lane_info(pos[0])
+
             self.step()
