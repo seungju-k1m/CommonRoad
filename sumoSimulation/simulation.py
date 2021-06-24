@@ -121,6 +121,10 @@ class Simulator:
             )
         problemSet = PlanningProblemSet(problems)
         sumo_sim.initialize(self.conf, self.scenario_wrapper, problemSet)
+
+        ids = sumo_sim.ids_cr2sumo['egoVehicle'].values()
+        for id in ids:
+            sumo_sim.vehicledomain.setColor(id, (255, 0, 0))
         # sumo_sim.initialize(self.conf, self.scenario_wrapper, self.problem)
         # ego_vehicles = sumo_sim.ego_vehicles
         # for step in range(self._cfg.step):
@@ -131,7 +135,13 @@ class Simulator:
 
         #     sumo_sim.simulate_step()
         #     time.sleep(0.01)
-        return sumo_sim
+        roadNetworks = sumo_sim.commonroad_scenario_at_time_step(
+            sumo_sim.current_time_step).lanelet_network
+        lanelets = roadNetworks.lanelets
+        self.lane_id2seq = {}
+        for i, lane in enumerate(lanelets):
+            self.lane_id2seq[lane.lanelet_id] = i+1
+        return sumo_sim, roadNetworks
 
     @staticmethod
     def wrap_scenario(data):
@@ -155,6 +165,28 @@ class Simulator:
             for key in attributes:
                 info[key].append(getattr(state, key))
 
+        return info
+
+    def find_which_lane(self, point: np.array) -> int:
+        self.map_info: LaneletNetwork
+        id = self.map_info.find_lanelet_by_position([point])
+        return id[0][0]
+
+    def load_lane_info(self, load_id: int) -> dict:
+        lanelet = self.map_info.find_lanelet_by_id(load_id)
+        left_vertices = lanelet.left_vertices
+        right_vertices = lanelet.right_vertices
+        ceneter_vertices = lanelet.center_vertices
+        info = {}
+        info['left_vertices'] = left_vertices
+        info['right_vertices'] = right_vertices
+        info['center_vertices'] = ceneter_vertices
+        info['lane'] = self.lane_id2seq[load_id]
+        return info
+
+    def load_current_occupied_lane_info(self, point):
+        id = self.find_which_lane(point)
+        info = self.load_lane_info(id)
         return info
 
     def step(self, action: np.array = None):
@@ -182,11 +214,12 @@ class Simulator:
         # Keys of Info : 'position', "orientation", "velocity"
         DT = 0.1
         A = 3.0
-        self.env = self.init()
+        self.env, self.map_info = self.init()
 
         for _ in range(100):
             ego_info, info = self.get_state()
             pos = ego_info['position']
+            map_info = self.load_current_occupied_lane_info(pos[0])
             ori = ego_info['orientation']
             velo = ego_info['velocity']
             self.step()
