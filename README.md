@@ -23,7 +23,7 @@
     # if you does not find path of sumo, then
     # In your own directory,
 
-    git clone --recursive https://github.com/DLR-TS/SUMOLibraries
+    git clone --recursive https://github.com/eclipse/sumo
     
     vim ~/.bashrc
     export SUMO_HOME=/your/path/to/sumo
