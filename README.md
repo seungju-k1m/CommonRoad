@@ -18,15 +18,7 @@
     # if you find /your/path/to/sumo, then
 
     vim ~/.bashrc
-    export SUMO_HOME=/your/path/to/sumo
-
-    # if you does not find path of sumo, then
-    # In your own directory,
-
-    git clone --recursive https://github.com/eclipse/sumo
-    
-    vim ~/.bashrc
-    export SUMO_HOME=/your/path/to/sumo
+    export SUMO_HOME=/usr
 
     # Third, install git
 
