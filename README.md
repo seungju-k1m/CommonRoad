@@ -5,7 +5,7 @@
 <h2> Install </h2>
 
     # First, install SUMO version 1.9.2
-    sudo apt-get install software-propertise-common
+    sudo apt-get install software-properties-common
     sudo add-apt-repository ppa:sumo/stable
     sudo apt-get update
     sudo apt-get install sumo sumo-tools sumo-doc

@@ -209,7 +209,7 @@ class Simulator:
         # Keys of Info : 'position', "orientation", "velocity"
         DT = 0.1
         A = 3.0
-        self.egoMode = True
+        self.egoMode = False
         self.env, self.map_info = self.init()
 
         for _ in range(100):
