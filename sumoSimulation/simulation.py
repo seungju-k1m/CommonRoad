@@ -22,9 +22,9 @@ from typing import List
 import numpy as np
 
 import pickle
-import time
+import math
 import copy
-import os
+import os 
 
 
 class vehicleSpec:
@@ -135,8 +135,7 @@ class Simulator:
             self.lane_id2seq[lane.lanelet_id] = i+1
         return sumo_sim, roadNetworks
 
-    @staticmethod
-    def wrap_scenario(data):
+    def wrap_scenario(self, data):
         info = {}
         states = []
         attributes = ['position', "orientation", "velocity"]
@@ -157,14 +156,51 @@ class Simulator:
         for i, id in enumerate(list_id):
             info[id] = {}
             for key in attributes:
-                info[id][key] = getattr(states[i], key)
+                if key == 'orientation':
+                    pos = info[id]['position']
+                    local_ori = self.find_local_orientation(pos)
+                    info[id][key] = getattr(states[i], key)
+                    info[id][key] = info[id][key] - local_ori
+                    info[id]['lane_ori'] = local_ori
+                else:
+                    info[id][key] = getattr(states[i], key)
 
         return info
 
     def find_which_lane(self, point: np.array) -> int:
         self.map_info: LaneletNetwork
         id = self.map_info.find_lanelet_by_position([point])
+        if id == [[]]:
+            return None
         return id[0][0]
+
+    def find_local_orientation(self, point: np.array) -> float:
+        id = self.find_which_lane(point)
+        if id is None:
+            return 0
+        # info = self.load_lane_info(id)
+        lanelet = self.map_info.find_lanelet_by_id(id)
+        center_vertices = lanelet.center_vertices
+        if point.shape != (1, 2):
+            point = point.reshape(1, 2)
+        distance = np.sum((point - center_vertices) ** 2, axis=1)
+        ind = np.argmin(distance)
+        list_ind = []
+        if ind <2:
+            list_ind = [0, 1, 2, 3, 4]
+        elif ind > len(distance) -3:
+            list_ind = [-5, -4, -3, -2, -1]
+        else:
+            list_ind = [ind-2, ind-1, ind, ind+1, ind+2]
+        selected_vertice = center_vertices[list_ind]
+        selected_vertice -= selected_vertice[0:1, :]
+        m = np.sum(selected_vertice[1:, 0] * selected_vertice[1:, 1]) / np.sum(selected_vertice[1:, 0] ** 2)
+        pos_neg = np.sum(selected_vertice[:, 0]) > 0
+        if pos_neg:
+            ori = math.atan2(m, 1)
+        else:
+            ori = math.atan2(-m, -1)
+        return ori
 
     def load_lane_info(self, load_id: int) -> dict:
         lanelet = self.map_info.find_lanelet_by_id(load_id)
@@ -219,6 +255,7 @@ class Simulator:
             if self.egoMode:
                 for key in ego_info.keys():
                     pos = ego_info[key]['position']
+                    local_ori = self.find_local_orientation(pos)
                     ori = ego_info[key]['orientation']
                     velo = ego_info[key]['velocity']
                     map_info = self.load_current_occupied_lane_info(pos)
