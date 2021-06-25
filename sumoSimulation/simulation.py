@@ -140,22 +140,24 @@ class Simulator:
         info = {}
         states = []
         attributes = ['position', "orientation", "velocity"]
-        for key in attributes:
-            info[key] = []
+        list_id = []
         if type(data) is Scenario:
             obs = data.obstacles
             for ob in obs:
                 states.append(ob.initial_state)
+                list_id.append(ob.obstacle_id)
         elif type(data) is dict:
             for vehicle in data.values():
                 vehicle: EgoVehicle
                 states.append(
                     vehicle.current_state
                 )
+                list_id.append(vehicle.id)
 
-        for state in states:
+        for i, id in enumerate(list_id):
+            info[id] = {}
             for key in attributes:
-                info[key].append(getattr(state, key))
+                info[id][key] = getattr(states[i], key)
 
         return info
 
@@ -209,15 +211,16 @@ class Simulator:
         # Keys of Info : 'position', "orientation", "velocity"
         DT = 0.1
         A = 3.0
-        self.egoMode = False
+        self.egoMode = True
         self.env, self.map_info = self.init()
 
         for _ in range(100):
             ego_info, info = self.get_state()
             if self.egoMode:
-                pos = ego_info['position']
-                ori = ego_info['orientation']
-                velo = ego_info['velocity']
-                map_info = self.load_current_occupied_lane_info(pos[0])
+                for key in ego_info.keys():
+                    pos = ego_info[key]['position']
+                    ori = ego_info[key]['orientation']
+                    velo = ego_info[key]['velocity']
+                    map_info = self.load_current_occupied_lane_info(pos)
 
             self.step()
