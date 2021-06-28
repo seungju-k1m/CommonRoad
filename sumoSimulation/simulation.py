@@ -17,14 +17,17 @@ from commonroad.geometry.shape import Rectangle
 
 from sumoSimulation.cfg import simulationCfg
 from config.sumo_config import SumoConf
+from scipy.optimize import curve_fit
+from sympy import Symbol, solve
 from typing import List
 
+import matplotlib.pyplot as plt
 import numpy as np
 
 import pickle
 import math
 import copy
-import os 
+import os
 
 
 class vehicleSpec:
@@ -67,6 +70,7 @@ class Simulator:
 
         self.vehicleSpecs: List[vehicleSpec] = [vehicleSpec(
             self._cfg.ego_vehs[key]) for key in self._cfg.ego_vehs.keys()]
+        self.road_curve = {}
 
     @staticmethod
     def load_sumo_configuration(path: str) -> SumoConf:
@@ -158,7 +162,8 @@ class Simulator:
             for key in attributes:
                 if key == 'orientation':
                     pos = info[id]['position']
-                    local_ori = self.find_local_orientation(pos)
+                    # local_ori = self.find_local_orientation(pos)
+                    local_ori = self.find_local_orientation_(pos)
                     info[id][key] = getattr(states[i], key)
                     info[id][key] = info[id][key] - local_ori
                     info[id]['lane_ori'] = local_ori
@@ -174,6 +179,61 @@ class Simulator:
             return None
         return id[0][0]
 
+    def calculate_road_curve(self, id, p=3):
+        def forward(x, a1, a2, a3):
+            return a1 * x + a2 * (x ** 2) + a3 * (x**3)
+        lanelet = self.map_info.find_lanelet_by_id(id)
+        center_vertices = lanelet.center_vertices
+        center_vertices_ = center_vertices - center_vertices[0:1]
+        popt, pconv = curve_fit(
+            forward, center_vertices_[:, 0], center_vertices_[:, 1])
+        self.road_curve[id] = popt
+
+    def find_local_orientation_(self, point: np.array) -> float:
+        id = self.find_which_lane(point)
+        if id is None:
+            return 0
+        if id in self.road_curve.keys():
+            popt = self.road_curve[id]
+        else:
+            self.calculate_road_curve(id)
+            popt = self.road_curve[id]
+        a1, a2, a3 = popt
+        lanelet = self.map_info.find_lanelet_by_id(id)
+        center_vertices = lanelet.center_vertices
+        x_pt, y_pt = point
+        if point.shape != (1, 2):
+            point = point.reshape(1, 2)
+        distance = np.sum((point - center_vertices) ** 2, axis=1)
+
+        def calculated_grad(x):
+            return a1 + 2 * a2 * x + 3 * a3 * x**2
+
+        list_ind = distance.argsort()[:2]
+        selected_vertice = center_vertices[list_ind]
+        m1 = calculated_grad(selected_vertice[0][0] - center_vertices[0][0])
+        m2 = calculated_grad(selected_vertice[1][0] - center_vertices[0][0])
+        if abs(m1 - m2) < 0.05:
+            # it is linear equation
+            alpha = -1 * (m2 * (y_pt - selected_vertice[0][1]) + x_pt - selected_vertice[0][0]) / (m2 * (
+                selected_vertice[0][1] - selected_vertice[1][1]) + selected_vertice[0][0] - selected_vertice[1][0])
+        else:
+            x = Symbol('x')
+            equation = x_pt - x * selected_vertice[0][0] - (1 - x) * selected_vertice[1][0] + (
+                y_pt - x * selected_vertice[0][1] - (1 - x) * selected_vertice[1][1]) * (x * (m1-m2) + m2)
+            result = np.array(solve(equation))
+            result = result[result > 0]
+            result = result[result < 1]
+
+            if len(result) == 0:
+                result = [0]
+            alpha = result[0]
+
+        m = alpha * m1 + (1 - alpha) * m2
+        ori = math.atan2(m, 1)
+
+        return ori
+
     def find_local_orientation(self, point: np.array) -> float:
         id = self.find_which_lane(point)
         if id is None:
@@ -186,16 +246,17 @@ class Simulator:
         distance = np.sum((point - center_vertices) ** 2, axis=1)
         ind = np.argmin(distance)
         list_ind = []
-        if ind <2:
-            list_ind = [0, 1, 2, 3, 4]
-        elif ind > len(distance) -3:
-            list_ind = [-5, -4, -3, -2, -1]
+        if ind < 2:
+            list_ind = [0, 1]
+        elif ind > len(distance) - 3:
+            list_ind = [-2, -1]
         else:
-            list_ind = [ind-2, ind-1, ind, ind+1, ind+2]
+            list_ind = [ind, ind+1]
         selected_vertice = center_vertices[list_ind]
-        selected_vertice -= selected_vertice[0:1, :]
-        m = np.sum(selected_vertice[1:, 0] * selected_vertice[1:, 1]) / np.sum(selected_vertice[1:, 0] ** 2)
-        pos_neg = np.sum(selected_vertice[:, 0]) > 0
+        selected_vertice_ = selected_vertice - selected_vertice[0:1, :]
+        m = np.sum(selected_vertice_[1:, 0] * selected_vertice_[1:, 1]
+                   ) / np.sum(selected_vertice_[1:, 0] ** 2)
+        pos_neg = np.sum(selected_vertice_[:, 0]) > 0
         if pos_neg:
             ori = math.atan2(m, 1)
         else:
