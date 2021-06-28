@@ -218,13 +218,17 @@ class Simulator:
             alpha = -1 * (m2 * (y_pt - selected_vertice[0][1]) + x_pt - selected_vertice[0][0]) / (m2 * (
                 selected_vertice[0][1] - selected_vertice[1][1]) + selected_vertice[0][0] - selected_vertice[1][0])
         else:
-            x = Symbol('x')
-            equation = x_pt - x * selected_vertice[0][0] - (1 - x) * selected_vertice[1][0] + (
-                y_pt - x * selected_vertice[0][1] - (1 - x) * selected_vertice[1][1]) * (x * (m1-m2) + m2)
-            result = np.array(solve(equation))
+            b1, b2 = selected_vertice[0]
+            t1, t2 = selected_vertice[1]
+            A = (m1 - m2) * (b2 - t2)
+            B = (m1 - m2) * (y_pt - b2) + m2 * (b2 - t2) + (b1 - t1)
+            C = m2 * (y_pt - b2) + x_pt - b1
+
+            alpha0 = (-B + (B**2 - 4 * A * C)**0.5)/(2 * A)
+            alpha1 = (-B - (B**2 - 4 * A * C)**0.5)/(2 * A)
+            result = np.array([alpha0, alpha1])
             result = result[result > 0]
             result = result[result < 1]
-
             if len(result) == 0:
                 result = [0]
             alpha = result[0]
@@ -308,10 +312,10 @@ class Simulator:
         # Keys of Info : 'position', "orientation", "velocity"
         DT = 0.1
         A = 3.0
-        self.egoMode = True
+        self.egoMode = False
         self.env, self.map_info = self.init()
 
-        for _ in range(100):
+        for _ in range(1000):
             ego_info, info = self.get_state()
             if self.egoMode:
                 for key in ego_info.keys():
