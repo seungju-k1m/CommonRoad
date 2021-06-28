@@ -22,6 +22,7 @@ from sympy import Symbol, solve
 from typing import List
 
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 import numpy as np
 
 import pickle
@@ -312,15 +313,44 @@ class Simulator:
 
         return ego_info, info
 
+    def plot_base(self):
+        lane_infos = []
+        for key in self.lane_id2seq.keys():
+            lane_infos.append(self.map_info.find_lanelet_by_id(key))
+        for info in lane_infos:
+            plt.plot(info.center_vertices[:, 0], info.center_vertices[:, 1])
+
+    def plot_info(self, info):
+        pos = np.array(info['position'])
+        lane_ori = info['lane_ori']
+        temp_x = math.cos(lane_ori) * 3
+        temp_y = math.sin(lane_ori) * 3
+        return [pos[0], pos[0] + temp_x], [pos[1], pos[1] + temp_y]
+
     def run(self):
         # Keys of Info : 'position', "orientation", "velocity"
         DT = 0.1
         A = 3.0
         self.egoMode = False
         self.env, self.map_info = self.init()
-
+        self.step()
+        # uncomment : check the lane orientation
+        # self.plot_base()
         for _ in range(1000):
             ego_info, info = self.get_state()
+            # if _ == 0:
+            #     key = list(info.keys())[1]
+
+            # if key in list(info.keys()) and _ < 100:
+            #     x_list, y_list = self.plot_info(info[key])
+                
+            #     plt.plot(x_list, y_list, '--b')
+            # elif _ > 100:
+            #     plt.show()
+            #     print("he")
+            # else:
+            #     plt.show()
+            #     print("hello")
             if self.egoMode:
                 for key in ego_info.keys():
                     pos = ego_info[key]['position']
