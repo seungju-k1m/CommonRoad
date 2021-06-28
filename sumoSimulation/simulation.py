@@ -334,23 +334,28 @@ class Simulator:
         self.egoMode = False
         self.env, self.map_info = self.init()
         self.step()
-        # uncomment : check the lane orientation
-        # self.plot_base()
+
         for _ in range(1000):
             ego_info, info = self.get_state()
+            # uncomment : check the lane orientation
+            # -------------------
             # if _ == 0:
             #     key = list(info.keys())[1]
+            #     self.plot_base()
 
             # if key in list(info.keys()) and _ < 100:
             #     x_list, y_list = self.plot_info(info[key])
-                
+
             #     plt.plot(x_list, y_list, '--b')
             # elif _ > 100:
             #     plt.show()
             #     print("he")
+            #     return None
             # else:
             #     plt.show()
             #     print("hello")
+            #     return None
+            # -----------------------
             if self.egoMode:
                 for key in ego_info.keys():
                     pos = ego_info[key]['position']
