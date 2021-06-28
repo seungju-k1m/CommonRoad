@@ -180,8 +180,8 @@ class Simulator:
         return id[0][0]
 
     def calculate_road_curve(self, id, p=3):
-        def forward(x, a1, a2, a3):
-            return a1 * x + a2 * (x ** 2) + a3 * (x**3)
+        def forward(x, a1, a2, a3, a4, a5):
+            return a1 * x + a2 * (x ** 2) + a3 * (x**3) + a4 * x**4 + a5 * x**5
         lanelet = self.map_info.find_lanelet_by_id(id)
         center_vertices = lanelet.center_vertices
         center_vertices_ = center_vertices - center_vertices[0:1]
@@ -198,22 +198,26 @@ class Simulator:
         else:
             self.calculate_road_curve(id)
             popt = self.road_curve[id]
-        a1, a2, a3 = popt
+        a1, a2, a3, a4, a5 = popt
         lanelet = self.map_info.find_lanelet_by_id(id)
         center_vertices = lanelet.center_vertices
         x_pt, y_pt = point
         if point.shape != (1, 2):
             point = point.reshape(1, 2)
-        distance = np.sum((point - center_vertices) ** 2, axis=1)
+        distance = np.sum((point - center_vertices) ** 2, axis=1) ** 0.5
 
         def calculated_grad(x):
-            return a1 + 2 * a2 * x + 3 * a3 * x**2
+            return a1 + 2 * a2 * x + 3 * a3 * x**2 + 4 * a4 * x**3 + 5 * a5 * x ** 4
 
-        list_ind = distance.argsort()[:2]
+        list_ind = distance.argsort()[0]
+        if list_ind == (len(distance) - 1):
+            list_ind = [list_ind - 2, list_ind]
+        else:
+            list_ind = [list_ind, list_ind + 1]
         selected_vertice = center_vertices[list_ind]
         m1 = calculated_grad(selected_vertice[0][0] - center_vertices[0][0])
         m2 = calculated_grad(selected_vertice[1][0] - center_vertices[0][0])
-        if abs(m1 - m2) < 0.05:
+        if abs(m1 - m2) < 0.001:
             # it is linear equation
             alpha = -1 * (m2 * (y_pt - selected_vertice[0][1]) + x_pt - selected_vertice[0][0]) / (m2 * (
                 selected_vertice[0][1] - selected_vertice[1][1]) + selected_vertice[0][0] - selected_vertice[1][0])
