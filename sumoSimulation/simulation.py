@@ -136,8 +136,10 @@ class Simulator:
             sumo_sim.current_time_step).lanelet_network
         lanelets = roadNetworks.lanelets
         self.lane_id2seq = {}
+        self.lane_let = {}
         for i, lane in enumerate(lanelets):
             self.lane_id2seq[lane.lanelet_id] = i+1
+            self.lane_let[lane.lanelet_id] = lane.center_vertices
         return sumo_sim, roadNetworks
 
     def wrap_scenario(self, data):
@@ -183,23 +185,31 @@ class Simulator:
     def calculate_road_curve(self, id, p=3):
         def forward(x, a1, a2, a3, a4, a5):
             return a1 * x + a2 * (x ** 2) + a3 * (x**3) + a4 * x**4 + a5 * x**5
+
+        def forward_(x, a1, a2, a3):
+            return a1 * x + a2 * x**2 + a3 * x ** 3
         lanelet = self.map_info.find_lanelet_by_id(id)
         center_vertices = lanelet.center_vertices
         center_vertices_ = center_vertices - center_vertices[0:1]
-        popt, pconv = curve_fit(
-            forward, center_vertices_[:, 0], center_vertices_[:, 1])
+        dim_weight = len(center_vertices)
+        if dim_weight > 5:
+            popt, pconv = curve_fit(
+                forward, center_vertices_[:, 0], center_vertices_[:, 1])
+        else:
+            popt, pconv = curve_fit(
+                forward_, center_vertices_[:, 0], center_vertices_[:, 1])
         self.road_curve[id] = popt
 
     def find_local_orientation_(self, point: np.array) -> float:
         id = self.find_which_lane(point)
         if id is None:
             return 0
-        if id in self.road_curve.keys():
+        if id in list(self.road_curve.keys()):
             popt = self.road_curve[id]
         else:
             self.calculate_road_curve(id)
             popt = self.road_curve[id]
-        a1, a2, a3, a4, a5 = popt
+        # a1, a2, a3, a4, a5 = popt
         lanelet = self.map_info.find_lanelet_by_id(id)
         center_vertices = lanelet.center_vertices
         x_pt, y_pt = point
@@ -208,8 +218,12 @@ class Simulator:
         distance = np.sum((point - center_vertices) ** 2, axis=1) ** 0.5
 
         def calculated_grad(x):
-            return a1 + 2 * a2 * x + 3 * a3 * x**2 + 4 * a4 * x**3 + 5 * a5 * x ** 4
-
+            if len(popt) == 5:
+                a1, a2, a3, a4, a5 = popt
+                return a1 + 2 * a2 * x + 3 * a3 * x**2 + 4 * a4 * x**3 + 5 * a5 * x ** 4
+            else:
+                a1, a2, a3 = popt
+                return a1 + 2 * a2 * x + 3 * a3 * x**2
         list_ind = distance.argsort()[0]
         if list_ind == (len(distance) - 1):
             list_ind = [list_ind - 2, list_ind]
@@ -241,35 +255,6 @@ class Simulator:
         m = alpha * m1 + (1 - alpha) * m2
         ori = math.atan2(m, 1)
 
-        return ori
-
-    def find_local_orientation(self, point: np.array) -> float:
-        id = self.find_which_lane(point)
-        if id is None:
-            return 0
-        # info = self.load_lane_info(id)
-        lanelet = self.map_info.find_lanelet_by_id(id)
-        center_vertices = lanelet.center_vertices
-        if point.shape != (1, 2):
-            point = point.reshape(1, 2)
-        distance = np.sum((point - center_vertices) ** 2, axis=1)
-        ind = np.argmin(distance)
-        list_ind = []
-        if ind < 2:
-            list_ind = [0, 1]
-        elif ind > len(distance) - 3:
-            list_ind = [-2, -1]
-        else:
-            list_ind = [ind, ind+1]
-        selected_vertice = center_vertices[list_ind]
-        selected_vertice_ = selected_vertice - selected_vertice[0:1, :]
-        m = np.sum(selected_vertice_[1:, 0] * selected_vertice_[1:, 1]
-                   ) / np.sum(selected_vertice_[1:, 0] ** 2)
-        pos_neg = np.sum(selected_vertice_[:, 0]) > 0
-        if pos_neg:
-            ori = math.atan2(m, 1)
-        else:
-            ori = math.atan2(-m, -1)
         return ori
 
     def load_lane_info(self, load_id: int) -> dict:
@@ -322,7 +307,8 @@ class Simulator:
 
     def plot_info(self, info):
         pos = np.array(info['position'])
-        lane_ori = info['lane_ori']
+        print(info['lane_ori'])
+        lane_ori = info['lane_ori'] + info['orientation']
         temp_x = math.cos(lane_ori) * 3
         temp_y = math.sin(lane_ori) * 3
         return [pos[0], pos[0] + temp_x], [pos[1], pos[1] + temp_y]
@@ -339,22 +325,22 @@ class Simulator:
             ego_info, info = self.get_state()
             # uncomment : check the lane orientation
             # -------------------
-            # if _ == 0:
-            #     key = list(info.keys())[1]
-            #     self.plot_base()
+            if _ == 0:
+                key = list(info.keys())[1]
+                self.plot_base()
 
-            # if key in list(info.keys()) and _ < 100:
-            #     x_list, y_list = self.plot_info(info[key])
+            if key in list(info.keys()) and _ < 100:
+                x_list, y_list = self.plot_info(info[key])
 
-            #     plt.plot(x_list, y_list, '--b')
-            # elif _ > 100:
-            #     plt.show()
-            #     print("he")
-            #     return None
-            # else:
-            #     plt.show()
-            #     print("hello")
-            #     return None
+                plt.plot(x_list, y_list, '--b')
+            elif _ > 100:
+                plt.show()
+                print("he")
+                return None
+            else:
+                plt.show()
+                print("hello")
+                return None
             # -----------------------
             if self.egoMode:
                 for key in ego_info.keys():
