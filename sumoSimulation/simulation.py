@@ -189,7 +189,7 @@ class Simulator:
         lanelet = self.map_info.find_lanelet_by_id(id)
         center_vertices = lanelet.center_vertices
         center_vertices_ = center_vertices - center_vertices[0:1]
-        center_vertices_ = self.interpolate_lane_info(center_vertices_)
+        # center_vertices_ = self.interpolate_lane_info(center_vertices_)
         dim_weight = len(center_vertices)
         while dim_weight < 10:
             center_vertices_ = self.interpolate_lane_info(center_vertices_)
