@@ -5,7 +5,7 @@ SUMO simulation
 from sumocr.maps.scenario_wrapper import AbstractScenarioWrapper
 from sumocr.interface.sumo_simulation import SumoSimulation
 from sumocr.interface.ego_vehicle import EgoVehicle
-from sumocr.sumo_config import EGO_ID_START
+# from sumocr.sumo_config import EGO_ID_START
 
 from commonroad.planning.planning_problem import PlanningProblem, PlanningProblemSet, GoalRegion
 from commonroad.common.file_reader import CommonRoadFileReader
@@ -18,11 +18,9 @@ from commonroad.geometry.shape import Rectangle
 from sumoSimulation.cfg import simulationCfg
 from config.sumo_config import SumoConf
 from scipy.optimize import curve_fit
-from sympy import Symbol, solve
 from typing import List
 
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
 import numpy as np
 
 import pickle
@@ -191,7 +189,11 @@ class Simulator:
         lanelet = self.map_info.find_lanelet_by_id(id)
         center_vertices = lanelet.center_vertices
         center_vertices_ = center_vertices - center_vertices[0:1]
+        center_vertices_ = self.interpolate_lane_info(center_vertices_)
         dim_weight = len(center_vertices)
+        while dim_weight < 10:
+            center_vertices_ = self.interpolate_lane_info(center_vertices_)
+            dim_weight = len(center_vertices_)
         if dim_weight > 5:
             popt, pconv = curve_fit(
                 forward, center_vertices_[:, 0], center_vertices_[:, 1])
@@ -199,6 +201,21 @@ class Simulator:
             popt, pconv = curve_fit(
                 forward_, center_vertices_[:, 0], center_vertices_[:, 1])
         self.road_curve[id] = popt
+
+    @staticmethod
+    def interpolate_lane_info(center_vertices):
+        num_vertices = len(center_vertices)
+        prior_vertice = center_vertices[:-1]
+        second_vertice = center_vertices[1:]
+        inter_vertice = (prior_vertice + second_vertice) / 2
+        vertices = []
+        for i in range(num_vertices * 2 - 1):
+            if i % 2 == 0:
+                vertices.append(center_vertices[int(i/2)])
+            else:
+                vertices.append(inter_vertice[int(i/2)])
+        vertices = np.array(vertices)
+        return vertices
 
     def find_local_orientation_(self, point: np.array) -> float:
         id = self.find_which_lane(point)
@@ -232,13 +249,13 @@ class Simulator:
         selected_vertice = center_vertices[list_ind]
         m1 = calculated_grad(selected_vertice[0][0] - center_vertices[0][0])
         m2 = calculated_grad(selected_vertice[1][0] - center_vertices[0][0])
+        b1, b2 = selected_vertice[0]
+        t1, t2 = selected_vertice[1]
         if abs(m1 - m2) < 0.001:
             # it is linear equation
-            alpha = -1 * (m2 * (y_pt - selected_vertice[0][1]) + x_pt - selected_vertice[0][0]) / (m2 * (
-                selected_vertice[0][1] - selected_vertice[1][1]) + selected_vertice[0][0] - selected_vertice[1][0])
+            alpha = -1 * (m2 * (y_pt - b2) + x_pt - b1) / (m2 * (
+                b2 - t2) + b1 - t1)
         else:
-            b1, b2 = selected_vertice[0]
-            t1, t2 = selected_vertice[1]
             A = (m1 - m2) * (b2 - t2)
             B = (m1 - m2) * (y_pt - b2) + m2 * (b2 - t2) + (b1 - t1)
             C = m2 * (y_pt - b2) + x_pt - b1
@@ -315,8 +332,8 @@ class Simulator:
 
     def run(self):
         # Keys of Info : 'position', "orientation", "velocity"
-        DT = 0.1
-        A = 3.0
+        # DT = 0.1
+        # A = 3.0
         self.egoMode = False
         self.env, self.map_info = self.init()
         self.step()
@@ -326,7 +343,7 @@ class Simulator:
             # uncomment : check the lane orientation
             # -------------------
             if _ == 0:
-                key = list(info.keys())[1]
+                key = list(info.keys())[10]
                 self.plot_base()
 
             if key in list(info.keys()) and _ < 100:
