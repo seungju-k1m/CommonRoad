@@ -24,6 +24,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import pickle
+import random
 import math
 import copy
 import os
@@ -246,6 +247,8 @@ class Simulator:
             list_ind = [list_ind - 2, list_ind]
         else:
             list_ind = [list_ind, list_ind + 1]
+        if 0 in list_ind:
+            x_pt, y_pt = center_vertices[0]
         selected_vertice = center_vertices[list_ind]
         m1 = calculated_grad(selected_vertice[0][0] - center_vertices[0][0])
         m2 = calculated_grad(selected_vertice[1][0] - center_vertices[0][0])
@@ -325,9 +328,9 @@ class Simulator:
     def plot_info(self, info):
         pos = np.array(info['position'])
         print(info['lane_ori'])
-        lane_ori = info['lane_ori'] + info['orientation']
-        temp_x = math.cos(lane_ori) * 3
-        temp_y = math.sin(lane_ori) * 3
+        lane_ori = info['lane_ori']
+        temp_x = math.cos(lane_ori) * 1
+        temp_y = math.sin(lane_ori) * 1
         return [pos[0], pos[0] + temp_x], [pos[1], pos[1] + temp_y]
 
     def run(self):
@@ -343,7 +346,8 @@ class Simulator:
             # uncomment : check the lane orientation
             # -------------------
             if _ == 0:
-                key = list(info.keys())[10]
+                xx = random.randint(0, len(list(info.keys())) - 1)
+                key = list(info.keys())[xx]
                 self.plot_base()
 
             if key in list(info.keys()) and _ < 100:
