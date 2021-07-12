@@ -5,6 +5,7 @@ SUMO simulation
 from sumocr.maps.scenario_wrapper import AbstractScenarioWrapper
 from sumocr.interface.sumo_simulation import SumoSimulation
 from sumocr.interface.ego_vehicle import EgoVehicle
+from sumocr.maps.util import generate_rou_file
 # from sumocr.sumo_config import EGO_ID_START
 
 from commonroad.planning.planning_problem import PlanningProblem, PlanningProblemSet, GoalRegion
@@ -16,6 +17,7 @@ from commonroad.scenario.trajectory import State
 from commonroad.geometry.shape import Rectangle
 
 from sumoSimulation.cfg import simulationCfg
+from sumoSimulation.utils import convert_net_to_cr
 from config.sumo_config import SumoConf
 from scipy.optimize import curve_fit
 from typing import List
@@ -24,7 +26,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import pickle
-import random
 import math
 import copy
 import os
@@ -46,12 +47,45 @@ class Simulator:
         # custom configuration for our case.
         self._cfg = cfg
         path = os.path.join(self._cfg.base_path, self._cfg.scenario_name)
-
         # sumocr.conf.
-        self.conf = self.load_sumo_configuration(path)
+        if self._cfg.generate_rou_file:
+            self.conf = SumoConf()
+        else:
+            _name = 'USA_US101-11_1_I-1-1'
+            _path = os.path.join(
+                self._cfg.base_path, _name
+            )
+            self.conf = self.load_sumo_configuration(_path)
+        # _conf = self.load_sumo_configuration(path)
+        # sumocr configuration for lane
+        for key in self._cfg.sumo_conf.keys():
+            setattr(self.conf, key, self._cfg.sumo_conf[key])
         self.conf.with_sumo_gui = self._cfg.gui
         self.conf.ego_veh_width = self._cfg.wid
         self.conf.ego_veh_length = self._cfg.length
+        current_path = os.getcwd()
+        if self._cfg.generate_rou_file:
+            netpath = os.path.join(
+                current_path, path, self._cfg.scenario_name+'.net.xml'
+            )
+            folder = os.path.join(
+                current_path, path
+            )
+            generate_rou_file(
+                netpath,
+                out_folder=folder,
+                conf=self.conf
+
+            )
+            dataPath = os.path.join(
+                current_path, path, 'simulation_config.p'
+            )
+            with open(dataPath, 'wb') as f:
+                pickle.dump(self.conf, f)
+            convert_net_to_cr(
+                netpath,
+                out_folder=folder
+            )
 
         # scenario is a kind of data format in CommonRoad.
         # only use lanelet_network data.
@@ -345,28 +379,28 @@ class Simulator:
             ego_info, info = self.get_state()
             # uncomment : check the lane orientation
             # -------------------
-            if _ == 0:
-                xx = random.randint(0, len(list(info.keys())) - 1)
-                key = list(info.keys())[xx]
-                self.plot_base()
+            # if _ == 0:
+            #     xx = random.randint(0, len(list(info.keys())) - 1)
+            #     key = list(info.keys())[xx]
+            #     self.plot_base()
 
-            if key in list(info.keys()) and _ < 100:
-                x_list, y_list = self.plot_info(info[key])
+            # if key in list(info.keys()) and _ < 100:
+            #     x_list, y_list = self.plot_info(info[key])
 
-                plt.plot(x_list, y_list, '--b')
-            elif _ > 100:
-                plt.show()
-                print("he")
-                return None
-            else:
-                plt.show()
-                print("hello")
-                return None
+            #     plt.plot(x_list, y_list, '--b')
+            # elif _ > 100:
+            #     plt.show()
+            #     print("he")
+            #     return None
+            # else:
+            #     plt.show()
+            #     print("hello")
+            #     return None
             # -----------------------
             if self.egoMode:
                 for key in ego_info.keys():
                     pos = ego_info[key]['position']
-                    local_ori = self.find_local_orientation(pos)
+                    # local_ori = self.find_local_orientation(pos)
                     ori = ego_info[key]['orientation']
                     velo = ego_info[key]['velocity']
                     map_info = self.load_current_occupied_lane_info(pos)

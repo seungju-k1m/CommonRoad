@@ -12,6 +12,8 @@ class simulationCfg:
         self.step = 1000
         self.wid = 1.6
         self.length = 4.3
+        self.sumo_conf = {}
+        self.generate_rou_file = False
         for key, value in self._jsonFile.items():
             setattr(self, key, value)
 
