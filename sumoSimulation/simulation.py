@@ -48,14 +48,13 @@ class Simulator:
         self._cfg = cfg
         path = os.path.join(self._cfg.base_path, self._cfg.scenario_name)
         # sumocr.conf.
-        if self._cfg.generate_rou_file:
-            self.conf = SumoConf()
-        else:
-            _name = 'USA_US101-11_1_I-1-1'
-            _path = os.path.join(
-                self._cfg.base_path, _name
-            )
-            self.conf = self.load_sumo_configuration(_path)
+
+        _name = 'USA_US101-1_1_I-1-1'
+        __path = './scenarios/interactive/NGSIM/US101'
+        _path = os.path.join(
+            __path, _name
+        )
+        self.conf = self.load_sumo_configuration(_path)
         # _conf = self.load_sumo_configuration(path)
         # sumocr configuration for lane
         for key in self._cfg.sumo_conf.keys():
@@ -77,11 +76,6 @@ class Simulator:
                 conf=self.conf
 
             )
-            dataPath = os.path.join(
-                current_path, path, 'simulation_config.p'
-            )
-            with open(dataPath, 'wb') as f:
-                pickle.dump(self.conf, f)
             convert_net_to_cr(
                 netpath,
                 out_folder=folder
