@@ -79,7 +79,6 @@ class Simulator:
                 netpath,
                 out_folder=folder,
                 conf=self.conf
-
             )
             convert_net_to_cr(
                 netpath,
@@ -328,8 +327,7 @@ class Simulator:
         return info
 
     def step(self, action: np.array = None):
-        # action [n, 2] :velo, yaw?
-        # action [n, 2] :accel, later accel?
+        # action [n, 2] :velo, yaw
         DT = .1
         if action is None:
             for ego_vehicle in self.env.ego_vehicles.values():
@@ -411,7 +409,8 @@ class Simulator:
         # A = 3.0
         self.env, self.map_info = self.init()
         self.step()
-        action = None
+        # action = None
+        action = [[5, 0]]
 
         for _ in range(1000):
             ego_info, info = self.get_state()
@@ -445,8 +444,7 @@ class Simulator:
 
             # uncomment: you can control vehicle by using keyboard
             # -----------------------
-            action = [[5, 0]]
-            action = self.set_action_keyboard(action)
+            # action = self.set_action_keyboard(action)
             # ------------------------
             time.sleep(.1)
             self.step(action)
