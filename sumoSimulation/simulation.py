@@ -20,14 +20,18 @@ from sumoSimulation.cfg import simulationCfg
 from sumoSimulation.utils import convert_net_to_cr
 from config.sumo_config import SumoConf
 from scipy.optimize import curve_fit
+from copy import deepcopy
+from math import cos, sin
 from typing import List
 
 import matplotlib.pyplot as plt
 import numpy as np
 
+import keyboard
 import pickle
 import math
 import copy
+import time
 import os
 
 
@@ -44,6 +48,7 @@ class Simulator:
         self,
         cfg: simulationCfg
     ):
+        print(os.getenv("SUDO_USER"))
         # custom configuration for our case.
         self._cfg = cfg
         path = os.path.join(self._cfg.base_path, self._cfg.scenario_name)
@@ -151,7 +156,7 @@ class Simulator:
                 PlanningProblem(i+1, initState, GoalRegion([_goalState]))
             )
         problemSet = PlanningProblemSet(problems)
-        if self.egoMode:
+        if self._cfg.ego_veh_mode:
             sumo_sim.initialize(self.conf, self.scenario_wrapper, problemSet)
             ids = sumo_sim.ids_cr2sumo['egoVehicle'].values()
             for id in ids:
@@ -323,6 +328,9 @@ class Simulator:
         return info
 
     def step(self, action: np.array = None):
+        # action [n, 2] :velo, yaw?
+        # action [n, 2] :accel, later accel?
+        DT = .1
         if action is None:
             for ego_vehicle in self.env.ego_vehicles.values():
                 ego_vehicle: EgoVehicle
@@ -330,6 +338,24 @@ class Simulator:
                 state_current = copy.deepcopy(state_current_ego)
                 state_current.time_step = 1
                 ego_vehicle.set_planned_trajectory([state_current])
+        else:
+            for n, ego_vehicle in enumerate(self.env.ego_vehicles.values()):
+                ego_vehicle: EgoVehicle
+                next_state = deepcopy(ego_vehicle.current_state)
+                x, y = next_state.position
+                o = next_state.orientation
+                velo, yaw = action[n]
+                next_position = np.array(
+                    [
+                        x + velo * cos(o) * DT, y + velo * sin(o) * DT
+                    ]
+                )
+                next_o = o + yaw * DT
+                next_state.position = next_position
+                next_state.velocity = velo
+                next_state.orientation = next_o
+                next_state.time_step = 1
+                ego_vehicle.set_planned_trajectory([next_state])
 
         self.env.simulate_step()
 
@@ -337,7 +363,7 @@ class Simulator:
         scenario = self.env.commonroad_scenario_at_time_step(
             self.env.current_time_step
         )
-        if self.egoMode:
+        if self._cfg.ego_veh_mode:
             egoVehicles = self.env.ego_vehicles
             ego_info = self.wrap_scenario(egoVehicles)
         else:
@@ -361,13 +387,31 @@ class Simulator:
         temp_y = math.sin(lane_ori) * 1
         return [pos[0], pos[0] + temp_x], [pos[1], pos[1] + temp_y]
 
+    def set_action_keyboard(self, previous_action):
+        # it supports when there is only one ego vehicle.
+        velo, yaw = previous_action[0]
+        A = .5
+        D = -2.2
+        DT = .1
+        YA = 0.05
+        if keyboard.is_pressed('w'):
+            velo += A * DT
+        if keyboard.is_pressed('s'):
+            velo += D * DT
+        if keyboard.is_pressed('a'):
+            yaw += YA * DT
+        if keyboard.is_pressed('d'):
+            yaw -= YA * DT
+        action = [[velo, yaw]]
+        return action
+
     def run(self):
         # Keys of Info : 'position', "orientation", "velocity"
         # DT = 0.1
         # A = 3.0
-        self.egoMode = False
         self.env, self.map_info = self.init()
         self.step()
+        action = None
 
         for _ in range(1000):
             ego_info, info = self.get_state()
@@ -391,7 +435,7 @@ class Simulator:
             #     print("hello")
             #     return None
             # -----------------------
-            if self.egoMode:
+            if self._cfg.ego_veh_mode:
                 for key in ego_info.keys():
                     pos = ego_info[key]['position']
                     # local_ori = self.find_local_orientation(pos)
@@ -399,4 +443,10 @@ class Simulator:
                     velo = ego_info[key]['velocity']
                     map_info = self.load_current_occupied_lane_info(pos)
 
-            self.step()
+            # uncomment: you can control vehicle by using keyboard
+            # -----------------------
+            action = [[5, 0]]
+            action = self.set_action_keyboard(action)
+            # ------------------------
+            time.sleep(.1)
+            self.step(action)

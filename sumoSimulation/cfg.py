@@ -14,6 +14,7 @@ class simulationCfg:
         self.length = 4.3
         self.sumo_conf = {}
         self.generate_rou_file = False
+        self.ego_veh_mode = False
         for key, value in self._jsonFile.items():
             setattr(self, key, value)
 
